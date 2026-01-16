@@ -48,7 +48,7 @@ const allWeaponIcons = [
 
 const createW = (id: string, name: string, icon: string, rarity: any, damage: number, lives: number, crit: number): Weapon => ({
   id, name, description: `Elite ${rarity} grade equipment.`, price: 0, icon, rarity, 
-  damage: isNaN(damage) || damage === null ? 500 : Math.max(1, Math.floor(damage)), 
+  damage: (isNaN(damage) || !isFinite(damage)) ? 500 : Math.floor(damage), 
   damageMultiplier: 1, extraLives: lives, keyDropBonus: 0.05, 
   critChance: crit, critMultiplier: 4.5, expBonus: 0.1, level: 1, maxLevel: 50
 });
@@ -58,8 +58,9 @@ const genPool = (rarity: string, baseDmg: number, baseLives: number, count: numb
   return Array.from({ length: count }, (_, i) => {
     const icon = allWeaponIcons[(iconOffset + i) % allWeaponIcons.length];
     const safeBaseDmg = baseDmg || 100;
-    const damageValue = safeBaseDmg + (i * (safeBaseDmg * 0.1));
-    return createW(`${rarity.toLowerCase()}_${i}`, `${rarity.replace('_', ' ')} ${titles[i % titles.length]} ${Math.floor(i / titles.length) + 1}`, icon, rarity as any, damageValue, baseLives + Math.floor(i / 3), 0.05 + (i * 0.005))
+    // Ensure calculation results in number
+    const dmg = safeBaseDmg + (i * (safeBaseDmg * 0.1));
+    return createW(`${rarity.toLowerCase()}_${i}`, `${rarity.replace('_', ' ')} ${titles[i % titles.length]} ${Math.floor(i / titles.length) + 1}`, icon, rarity as any, dmg, baseLives + Math.floor(i / 3), 0.05 + (i * 0.005))
   });
 };
 
