@@ -276,6 +276,10 @@ const App: React.FC = () => {
   const claimRankReward = () => {
     if (!canClaimRank()) return showNotification("Wait for cycle reset!", 'error');
     
+    if (state.player.username === "NewFighter") {
+        return showNotification("Change Name to Enter Ranks!", 'error');
+    }
+
     const sorted = [...leaderboard].sort((a,b) => {
        const valA = (a as any)[rankTab === 'points' ? 'score' : rankTab] || 0;
        const valB = (b as any)[rankTab === 'points' ? 'score' : rankTab] || 0;
