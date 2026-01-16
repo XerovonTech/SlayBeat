@@ -32,6 +32,15 @@ const GlobalHUD: React.FC<{ player: PlayerStats }> = ({ player }) => (
 const RANK_CYCLE_HOURS = 7;
 const RANK_CYCLE_MS = RANK_CYCLE_HOURS * 60 * 60 * 1000;
 
+const TIPS = [
+  "💡 TIP: Buy new weapons from lootboxes to increase power!",
+  "💡 TIP: Upgrade weapons in the Armory for massive damage!",
+  "💡 TIP: Perfect combos grant bonus damage multiplier!",
+  "💡 TIP: Daily Vault rewards reset every 12 hours!",
+  "💡 TIP: Recruit more characters to unlock team bonuses!",
+  "💡 TIP: Hold notes deal 3x damage over time!"
+];
+
 type NotificationType = 'success' | 'error' | 'info';
 interface Notification {
   message: string;
@@ -103,6 +112,7 @@ const App: React.FC = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(state.player.username);
   const [weaponToDelete, setWeaponToDelete] = useState<Weapon | null>(null);
+  const [tipIndex, setTipIndex] = useState(0);
 
   const [lastClaimedCycle, setLastClaimedCycle] = useState<number>(() => {
     const saved = localStorage.getItem('last_rank_cycle_claim');
@@ -124,6 +134,13 @@ const App: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => setTime(Date.now()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const tipTimer = setInterval(() => {
+      setTipIndex(prev => (prev + 1) % TIPS.length);
+    }, 4000);
+    return () => clearInterval(tipTimer);
   }, []);
 
   useEffect(() => {
@@ -368,7 +385,13 @@ const App: React.FC = () => {
 
             <div className="flex-grow flex flex-col items-center justify-center -mt-10">
               <h1 className="text-8xl bungee three-d-text italic tracking-tighter text-center leading-none">SLAY<br/><span className="text-red-600">BEAT</span></h1>
-              <div className="grid grid-cols-1 gap-4 w-full px-4 mt-12">
+              
+              {/* Rotating Tips */}
+              <div className="mt-8 px-6 py-2 bg-white/5 rounded-full border border-white/10 animate-fade-in key-{tipIndex}">
+                 <p className="bungee text-[9px] text-slate-300 text-center font-black uppercase tracking-wider">{TIPS[tipIndex]}</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 w-full px-4 mt-8">
                 <button onClick={() => setState(p => ({ ...p, view: GameView.LEVEL_SELECT }))} className="bg-red-600 bungee text-5xl py-8 rounded-[3rem] shadow-[0_12px_0_rgb(153,27,27)] active:translate-y-2 border-b-2 border-white/20 font-black">ATTACK</button>
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => setState(p => ({ ...p, view: GameView.TEAM }))} className="bg-slate-900 py-5 rounded-2xl border-2 border-white/5 bungee text-sm hover:bg-slate-800 font-black">TEAM</button>
@@ -561,15 +584,15 @@ const App: React.FC = () => {
              <div className="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-12">
                 <section>
                    <h3 className="bungee text-xl text-white mb-4 flex items-center gap-3">⚔️ <span className="underline">Battle Titans</span></h3>
-                   <p className="bungee text-[10px] text-white/50 leading-relaxed uppercase font-black">Tap the lanes in rhythm with the falling notes to attack. Your characters will linearly throw weapons at the monster. Each hit deals damage based on your armory power! Hold notes deal 3x damage.</p>
+                   <p className="bungee text-sm text-white leading-relaxed font-black">Tap the lanes in rhythm with the falling notes to attack. Your characters will linearly throw weapons at the monster. Each hit deals damage based on your armory power! Hold notes deal 3x damage.</p>
                 </section>
                 <section>
                    <h3 className="bungee text-xl text-white mb-4 flex items-center gap-3">🌌 <span className="underline">The Void</span></h3>
-                   <p className="bungee text-[10px] text-white/50 leading-relaxed uppercase font-black">After every victory, you enter the Void. Tap the 🟡, 🟢, and 🔴 keys escaping the black hole. Avoid the 💣 at all costs or you lose your collected keys!</p>
+                   <p className="bungee text-sm text-white leading-relaxed font-black">After every victory, you enter the Void. Tap the 🟡, 🟢, and 🔴 keys escaping the black hole. Avoid the 💣 at all costs or you lose your collected keys!</p>
                 </section>
                 <section>
                    <h3 className="bungee text-xl text-white mb-4 flex items-center gap-3">📦 <span className="underline">Armory & Market</span></h3>
-                   <p className="bungee text-[10px] text-white/50 leading-relaxed uppercase font-black">Collect keys to open tiered crates. Use "Armory" to upgrade weapons up to Level 50. Weapons also grant extra HP and Crit chances.</p>
+                   <p className="bungee text-sm text-white leading-relaxed font-black">Collect keys to open tiered crates. Use "Armory" to upgrade weapons up to Level 50. Weapons also grant extra HP and Crit chances.</p>
                 </section>
              </div>
              <button onClick={() => setShowHowToPlay(false)} className="mt-8 bg-red-600 bungee py-6 rounded-3xl text-2xl font-black uppercase shadow-xl">LET'S GO!</button>
@@ -681,7 +704,20 @@ const App: React.FC = () => {
             </div>
             <div className="grid grid-cols-4 gap-3 overflow-y-auto custom-scrollbar flex-grow pb-32">
               {MONSTERS.map(m => (
-                <button key={m.id} disabled={m.level > state.player.unlockedLevel} onClick={() => setState(p => ({ ...p, view: GameView.BATTLE, currentLevel: m }))} className={`p-4 rounded-3xl border-2 transition-all flex flex-col items-center group relative ${m.level > state.player.unlockedLevel ? 'bg-slate-900 border-white/5 opacity-20' : 'bg-slate-800 border-red-500/50 hover:bg-red-900/40 shadow-2xl'}`}>
+                <button key={m.id} disabled={m.level > state.player.unlockedLevel} onClick={() => {
+                   // Auto-equip logic: if player has nothing equipped but has weapons, equip the first one.
+                   let nextPlayer = { ...state.player };
+                   if (nextPlayer.equipped.length === 0 && nextPlayer.inventory.length > 0) {
+                      nextPlayer.equipped = [nextPlayer.inventory[0].id];
+                      // We must update state here carefully to reflect the equipped item instantly
+                   }
+                   setState(p => ({ 
+                      ...p, 
+                      player: nextPlayer,
+                      view: GameView.BATTLE, 
+                      currentLevel: m 
+                   }));
+                }} className={`p-4 rounded-3xl border-2 transition-all flex flex-col items-center group relative ${m.level > state.player.unlockedLevel ? 'bg-slate-900 border-white/5 opacity-20' : 'bg-slate-800 border-red-500/50 hover:bg-red-900/40 shadow-2xl'}`}>
                   <img src={m.image} className="w-14 h-14 mb-2 transition-transform group-hover:scale-110" />
                   <div className="bungee text-[10px] text-white font-black">STAGE {m.level}</div>
                 </button>

@@ -185,27 +185,62 @@ export const GameEngine: React.FC<Props> = ({ monster, player, onFinish, weapons
     }
 
     // --- Spawn Notes ---
-    const spawnRate = Math.max(250, 1000 - (monster.level * 15));
+    // Adjusted spawn rate: slightly slower base to accommodate pattern density
+    const spawnRate = Math.max(350, 900 - (monster.level * 12)); 
+    
     if (now - lastSpawnRef.current > spawnRate) {
-      const burstCount = monster.level > 60 ? 3 : monster.level > 25 ? 2 : 1;
-      const newNotes: Note[] = [];
-      const usedLanes = new Set();
-      for(let i=0; i < burstCount; i++) {
-        let lane = Math.floor(Math.random() * 4);
-        while(usedLanes.has(lane)) lane = Math.floor(Math.random() * 4);
-        usedLanes.add(lane);
-        newNotes.push({ 
-            id: Math.random(), 
-            lane, 
-            time: elapsed + travelTime, 
-            type: 'single', 
-            hit: false, 
-            missed: false 
-        });
-      }
-      notesRef.current = [...notesRef.current, ...newNotes];
-      setNotesRender([...notesRef.current]);
-      lastSpawnRef.current = now;
+       const baseTime = elapsed + travelTime;
+       const newNotes: Note[] = [];
+       
+       let pattern = 'single';
+       const r = Math.random();
+       
+       // Pattern Selection Logic based on Level
+       if (monster.level >= 12) {
+           // 25% chance for Double (Simultaneous) - Max 2 notes
+           if (r > 0.75) pattern = 'double';
+           
+           // STAIRCASE REMOVED per user request (too hard for thumbs)
+           
+           // Level 25+: 10% chance for Stream (Fast alternating)
+           if (monster.level >= 25 && r > 0.90) pattern = 'stream';
+       }
+
+       if (pattern === 'double') {
+           // Max 2 simultaneous notes (Satisfies "Never 3" rule)
+           const l1 = Math.floor(Math.random() * 4);
+           let l2 = Math.floor(Math.random() * 4);
+           while (l2 === l1) l2 = Math.floor(Math.random() * 4);
+           
+           newNotes.push({ id: Math.random(), lane: l1, time: baseTime, type: 'single', hit: false, missed: false });
+           newNotes.push({ id: Math.random(), lane: l2, time: baseTime, type: 'single', hit: false, missed: false });
+           
+       } else if (pattern === 'stream') {
+           // Rapid alternating (e.g., 0-2-0-2) - Thumb Friendly
+           const l1 = Math.floor(Math.random() * 4);
+           let l2 = (l1 + 2) % 4; 
+           for(let i=0; i<4; i++) {
+               newNotes.push({ 
+                   id: Math.random(), 
+                   lane: i % 2 === 0 ? l1 : l2, 
+                   time: baseTime + (i * 100), // Fast 100ms offset
+                   type: 'single', hit: false, missed: false 
+               });
+           }
+           lastSpawnRef.current = now + 300;
+
+       } else {
+           // Single Note
+           const l = Math.floor(Math.random() * 4);
+           newNotes.push({ id: Math.random(), lane: l, time: baseTime, type: 'single', hit: false, missed: false });
+       }
+
+       notesRef.current = [...notesRef.current, ...newNotes];
+       setNotesRender([...notesRef.current]);
+       
+       if (pattern !== 'stream') {
+           lastSpawnRef.current = now;
+       }
     }
 
     // --- Update Projectiles ---
